@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>환불 현황 대시보드 v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        * {
+            font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+    <div id="app" class="min-h-screen p-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- 로딩 화면 -->
+            <div id="loading" class="flex items-center justify-center min-h-screen">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-gray-300 mx-auto mb-4"></div>
+                    <p class="text-gray-300 text-lg">데이터를 불러오는 중...</p>
+                </div>
+            </div>
+
+            <!-- 메인 컨텐츠 -->
+            <div id="content" class="hidden">
+                <!-- 헤더 -->
+                <div class="mb-8">
+                    <div class="flex items-center justify-between flex-wrap gap-4">
+                        <div>
+                            <h1 class="text-4xl font-bold text-yellow-400 mb-2">Abyss of Dungeons 환불 현황 대시보드</h1>
+                            <p class="text-gray-400">실시간 환불 데이터 분석</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="date" id="startDate" class="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-gray-500">
+                                <span class="text-gray-400">~</span>
+                                <input type="date" id="endDate" class="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-gray-500">
+                                <button onclick="loadData()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition flex items-center gap-2">
+                                    🔄 새로고침
+                                </button>
+                            </div>
+                            <p id="lastUpdated" class="text-sm text-gray-400"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 주요 지표 카드 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-gray-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm font-medium mb-1">총 환불 건수</p>
+                                <p id="totalCount" class="text-4xl font-bold text-white">0</p>
+                            </div>
+                            <div class="bg-gray-700 p-4 rounded-full">
+                                <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-800 rounded-xl shadow-lg p-6 border-l-4 border-gray-500">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-400 text-sm font-medium mb-1">총 환불 금액</p>
+                                <p id="totalAmount" class="text-4xl font-bold text-white">$0</p>
+                            </div>
+                            <div class="bg-gray-700 p-4 rounded-full">
+                                <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 차트 섹션 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Store별 분포 -->
+                    <div class="bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h2 class="text-xl font-bold text-white mb-4">Store별 분포</h2>
+                        <div id="storeChart"></div>
+                    </div>
+
+                    <!-- Language별 분포 -->
+                    <div class="bg-gray-800 rounded-xl shadow-lg p-6">
+                        <h2 class="text-xl font-bold text-white mb-4">Language별 분포</h2>
+                        <div id="languageChart"></div>
+                    </div>
+                </div>
+
+                <!-- 날짜별 추이 -->
+                <div class="bg-gray-800 rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold text-white mb-4">날짜별 환불 건수 추이</h2>
+                    <div id="dateChart"></div>
+                </div>
+
+                <!-- 푸터 -->
+                <footer class="mt-8 text-center py-4 border-t border-gray-700">
+                    <p class="text-gray-400 text-sm">
+                        Made by <span class="font-semibold text-gray-300">JEEYEA CHA</span>
+                    </p>
+                </footer>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzCQXMyI5PedL2ZnR3qyi0QB2EKpLSsocmkG3Edttpv00asb0iRUmRmKxj_QHw4VKC_/exec';
+        let charts = {
+            store: null,
+            language: null,
+            date: null
+        };
+
+        async function loadData() {
+            try {
+                const response = await fetch(API_URL);
+                
+                if (!response.ok) {
+                    throw new Error('서버 응답 오류');
+                }
+                
+                let data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error('데이터가 없습니다');
+                }
+                
+                // 날짜 필터링
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                if (startDate || endDate) {
+                    data = data.filter(row => {
+                        if (!row.date) return false;
+                        const rowDate = row.date;
+                        if (startDate && rowDate < startDate) return false;
+                        if (endDate && rowDate > endDate) return false;
+                        return true;
+                    });
+                }
+                
+                updateDashboard(data);
+                
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('content').classList.remove('hidden');
+                document.getElementById('lastUpdated').textContent = 
+                    `마지막 업데이트: ${new Date().toLocaleTimeString('ko-KR')}`;
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <div class="text-center bg-gray-800 p-8 rounded-xl shadow-lg max-w-md mx-auto">
+                        <div class="text-red-400 text-5xl mb-4">⚠️</div>
+                        <h2 class="text-2xl font-bold text-white mb-4">데이터를 불러올 수 없습니다</h2>
+                        <p class="text-gray-400 mb-4">${error.message}</p>
+                        <button onclick="loadData()" class="bg-gray-700 text-white px-6 py-2 rounded-lg hover:bg-gray-800 transition">
+                            다시 시도
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function updateDashboard(data) {
+            // company가 있으면 모두 유효한 데이터로 처리
+            const validData = data.filter(row => row.company);
+            
+            // 총 건수는 "환불 완료/Refunded" 상태인 것만 카운트
+            const completedData = validData.filter(row => {
+                const status = row.status || '';
+                return status.includes('환불 완료') || status.includes('Refunded');
+            });
+            const totalCount = completedData.length;
+            
+            // 총 금액
+            const totalAmount = validData.reduce((sum, row) => {
+                const amount = parseFloat(row.amount?.replace(/[^0-9.-]/g, '') || 0);
+                return sum + amount;
+            }, 0);
+
+            document.getElementById('totalCount').textContent = totalCount.toLocaleString();
+            document.getElementById('totalAmount').textContent = 
+                totalAmount > 0 ? `$${totalAmount.toLocaleString()}` : 'N/A';
+
+            // Store별 분포 (전체 데이터)
+            const storeDist = {};
+            validData.forEach(row => {
+                const store = row.store && row.store.trim() !== '' ? row.store : '미정';
+                storeDist[store] = (storeDist[store] || 0) + 1;
+            });
+            updateStoreChart(storeDist);
+
+            // Language별 분포 (전체 데이터)
+            const languageDist = {};
+            validData.forEach(row => {
+                const language = row.language && row.language.trim() !== '' ? row.language : '미정';
+                languageDist[language] = (languageDist[language] || 0) + 1;
+            });
+            updateLanguageChart(languageDist);
+
+            // 날짜별 추이 (환불 완료만)
+            const dateDist = {};
+            completedData.forEach(row => {
+                const date = row.date;
+                if (date && date !== '➡') {
+                    dateDist[date] = (dateDist[date] || 0) + 1;
+                }
+            });
+            updateDateChart(dateDist);
+        }
+
+        function updateStoreChart(data) {
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            const options = {
+                series: [{
+                    name: '환불 건수',
+                    data: values
+                }],
+                chart: {
+                    type: 'bar',
+                    height: 300,
+                    background: 'transparent',
+                    foreColor: '#9ca3af'
+                },
+                plotOptions: {
+                    bar: {
+                        borderRadius: 6,
+                        dataLabels: {
+                            position: 'center',
+                        },
+                    }
+                },
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        colors: ["#ffffff"]
+                    }
+                },
+                xaxis: {
+                    categories: labels,
+                    labels: {
+                        style: {
+                            colors: '#9ca3af'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: function (val) {
+                            return Math.floor(val);
+                        },
+                        style: {
+                            colors: '#9ca3af'
+                        }
+                    }
+                },
+                grid: {
+                    borderColor: '#374151'
+                },
+                colors: ['#8b5cf6']
+            };
+
+            if (charts.store) {
+                charts.store.destroy();
+            }
+            charts.store = new ApexCharts(document.querySelector("#storeChart"), options);
+            charts.store.render();
+        }
+
+        function updateLanguageChart(data) {
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+
+            const options = {
+                series: [{
+                    name: '환불 건수',
+                    data: values
+                }],
+                chart: {
+                    type: 'bar',
+                    height: 300,
+                    background: 'transparent',
+                    foreColor: '#9ca3af'
+                },
+                plotOptions: {
+                    bar: {
+                        borderRadius: 6,
+                        dataLabels: {
+                            position: 'center',
+                        },
+                    }
+                },
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        colors: ["#ffffff"]
+                    }
+                },
+                xaxis: {
+                    categories: labels,
+                    labels: {
+                        style: {
+                            colors: '#9ca3af'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: function (val) {
+                            return Math.floor(val);
+                        },
+                        style: {
+                            colors: '#9ca3af'
+                        }
+                    }
+                },
+                grid: {
+                    borderColor: '#374151'
+                },
+                colors: ['#14b8a6']
+            };
+
+            if (charts.language) {
+                charts.language.destroy();
+            }
+            charts.language = new ApexCharts(document.querySelector("#languageChart"), options);
+            charts.language.render();
+        }
+
+        function updateDateChart(data) {
+            // 날짜별 카운트 맵 생성
+            const dateMap = {};
+            Object.entries(data).forEach(([date, count]) => {
+                dateMap[date] = count;
+            });
+            
+            // 날짜 범위 설정
+            let allDates = [];
+            const dates = Object.keys(dateMap).sort();
+            
+            if (dates.length > 0) {
+                // 시작일과 종료일 설정
+                const startDate = new Date(dates[0]);
+                const endDate = new Date(dates[dates.length - 1]);
+                
+                // 종료일을 오늘 날짜와 비교해서 더 최근 날짜로 설정
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const finalEndDate = endDate > today ? endDate : today;
+                
+                // 시작일부터 종료일(또는 오늘)까지 모든 날짜 생성
+                for (let d = new Date(startDate); d <= finalEndDate; d.setDate(d.getDate() + 1)) {
+                    const dateStr = d.toISOString().split('T')[0];
+                    allDates.push(dateStr);
+                }
+            } else {
+                // 데이터가 없을 때는 오늘 날짜만 표시
+                const today = new Date();
+                allDates.push(today.toISOString().split('T')[0]);
+            }
+            
+            // 모든 날짜에 대해 값 설정 (없으면 0)
+            const labels = allDates;
+            const values = allDates.map(date => dateMap[date] || 0);
+
+            const options = {
+                series: [{
+                    name: '환불 건수',
+                    data: values
+                }],
+                chart: {
+                    type: 'area',
+                    height: 300,
+                    background: 'transparent',
+                    foreColor: '#9ca3af',
+                    zoom: {
+                        enabled: false
+                    }
+                },
+                dataLabels: {
+                    enabled: true,
+                    style: {
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        colors: ['#06b6d4']
+                    },
+                    background: {
+                        enabled: true,
+                        foreColor: '#1f2937',
+                        borderRadius: 2,
+                        padding: 4,
+                        opacity: 0.9,
+                        borderWidth: 1,
+                        borderColor: '#06b6d4'
+                    }
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 2
+                },
+                xaxis: {
+                    categories: labels,
+                    labels: {
+                        rotate: -45,
+                        rotateAlways: true,
+                        style: {
+                            colors: '#9ca3af'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: function (val) {
+                            return Math.floor(val);
+                        },
+                        style: {
+                            colors: '#9ca3af'
+                        }
+                    },
+                    min: 0
+                },
+                grid: {
+                    borderColor: '#374151'
+                },
+                colors: ['#06b6d4'],
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shadeIntensity: 1,
+                        opacityFrom: 0.7,
+                        opacityTo: 0.2,
+                    }
+                }
+            };
+
+            if (charts.date) {
+                charts.date.destroy();
+            }
+            charts.date = new ApexCharts(document.querySelector("#dateChart"), options);
+            charts.date.render();
+        }
+
+        // 페이지 로드시 데이터 불러오기
+        loadData();
+    </script>
+</body>
+</html>
