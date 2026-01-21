@@ -95,15 +95,15 @@
 
                 <!-- 차트 섹션 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                    <!-- Store별 분포 -->
+                    <!-- 스토어별 분포 -->
                     <div class="bg-gray-800 rounded-xl shadow-lg p-6">
-                        <h2 class="text-xl font-bold text-white mb-4">Store별 분포</h2>
+                        <h2 class="text-xl font-bold text-white mb-4">스토어별 분포</h2>
                         <div id="storeChart"></div>
                     </div>
 
-                    <!-- Language별 분포 -->
+                    <!-- 언어별 분포 -->
                     <div class="bg-gray-800 rounded-xl shadow-lg p-6">
-                        <h2 class="text-xl font-bold text-white mb-4">Language별 분포</h2>
+                        <h2 class="text-xl font-bold text-white mb-4">언어별 분포</h2>
                         <div id="languageChart"></div>
                     </div>
                 </div>
@@ -279,6 +279,9 @@
         function updateStoreChart(data) {
             const labels = Object.keys(data);
             const values = Object.values(data);
+            
+            // 항목별 다른 색상 배열
+            const colors = ['#8b5cf6', '#14b8a6', '#f59e0b', '#ef4444', '#06b6d4', '#10b981'];
 
             const options = {
                 series: [{
@@ -294,6 +297,7 @@
                 plotOptions: {
                     bar: {
                         borderRadius: 6,
+                        distributed: true,
                         dataLabels: {
                             position: 'center',
                         },
@@ -328,7 +332,10 @@
                 grid: {
                     borderColor: '#374151'
                 },
-                colors: ['#8b5cf6']
+                colors: colors,
+                legend: {
+                    show: false
+                }
             };
 
             if (charts.store) {
@@ -341,6 +348,9 @@
         function updateLanguageChart(data) {
             const labels = Object.keys(data);
             const values = Object.values(data);
+            
+            // 항목별 다른 색상 배열
+            const colors = ['#14b8a6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4', '#10b981'];
 
             const options = {
                 series: [{
@@ -356,6 +366,7 @@
                 plotOptions: {
                     bar: {
                         borderRadius: 6,
+                        distributed: true,
                         dataLabels: {
                             position: 'center',
                         },
@@ -390,7 +401,10 @@
                 grid: {
                     borderColor: '#374151'
                 },
-                colors: ['#14b8a6']
+                colors: colors,
+                legend: {
+                    show: false
+                }
             };
 
             if (charts.language) {
