@@ -75,6 +75,7 @@
                             <div>
                                 <p class="text-gray-400 text-sm font-medium mb-1">총 환불 금액</p>
                                 <p id="totalAmount" class="text-4xl font-bold text-white">$0</p>
+                                <p id="totalAmountKRW" class="text-sm text-gray-400 mt-1"></p>
                             </div>
                             <div class="bg-gray-700 p-4 rounded-full">
                                 <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,6 +204,14 @@
             document.getElementById('totalCount').textContent = totalCount.toLocaleString();
             document.getElementById('totalAmount').textContent = 
                 totalAmount > 0 ? `$${totalAmount.toLocaleString()}` : 'N/A';
+            
+            // 원화 환산 (환율: 1 USD = 1400 KRW)
+            if (totalAmount > 0) {
+                const krwAmount = Math.round(totalAmount * 1400);
+                document.getElementById('totalAmountKRW').textContent = `약 ${krwAmount.toLocaleString()}원`;
+            } else {
+                document.getElementById('totalAmountKRW').textContent = '';
+            }
 
             // 환불 상태 요약 (한국어만)
             const statusDist = {};
