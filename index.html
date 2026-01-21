@@ -108,6 +108,12 @@
                     </div>
                 </div>
 
+                <!-- 스토어별 환불 금액 -->
+                <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+                    <h2 class="text-xl font-bold text-white mb-4">스토어별 환불 금액 (날짜별)</h2>
+                    <div id="storeAmountChart"></div>
+                </div>
+
                 <!-- 날짜별 추이 -->
                 <div class="bg-gray-800 rounded-xl shadow-lg p-6">
                     <h2 class="text-xl font-bold text-white mb-4">날짜별 환불 건수 추이</h2>
@@ -129,6 +135,7 @@
         let charts = {
             store: null,
             language: null,
+            storeAmount: null,
             date: null
         };
 
@@ -231,6 +238,49 @@
             });
             updateStoreChart(storeDist);
 
+            // Store별 날짜별 환불 금액 집계
+            console.log('Valid data length:', validData.length);
+            console.log('First 3 items:', validData.slice(0, 3));
+            
+            const storeAmountByDate = {};
+            validData.forEach((row, index) => {
+                const store = row.store && row.store.trim() !== '' ? row.store : '미정';
+                const date = row.date;
+                const amountStr = row.amount;
+                
+                // amount가 비어있거나 null이면 0
+                let amount = 0;
+                if (amountStr && amountStr.trim() !== '') {
+                    amount = parseFloat(amountStr.toString().replace(/[^0-9.-]/g, '')) || 0;
+                }
+                
+                if (index < 3) {
+                    console.log(`Row ${index}:`, { 
+                        store, 
+                        date, 
+                        amountStr, 
+                        amount,
+                        hasDate: !!date,
+                        dateValid: date && date !== '➡'
+                    });
+                }
+                
+                if (date && date !== '➡') {
+                    if (!storeAmountByDate[store]) {
+                        storeAmountByDate[store] = {};
+                    }
+                    storeAmountByDate[store][date] = (storeAmountByDate[store][date] || 0) + amount;
+                }
+            });
+            console.log('Store Amount By Date:', JSON.stringify(storeAmountByDate, null, 2));
+            
+            // 빈 객체 체크
+            if (Object.keys(storeAmountByDate).length === 0) {
+                console.error('No store amount data available!');
+            }
+            
+            updateStoreAmountChart(storeAmountByDate);
+
             // Language별 분포 (전체 데이터)
             const languageDist = {};
             validData.forEach(row => {
@@ -256,6 +306,7 @@
                 '환불 완료': 'bg-green-500',
                 '보류': 'bg-orange-500',
                 '환불 불가': 'bg-red-500',
+                '유저 안내 필요': 'bg-purple-500',
                 '미확인': 'bg-gray-500'
             };
 
@@ -274,6 +325,144 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function updateStoreAmountChart(storeData) {
+            console.log('updateStoreAmountChart called with:', JSON.stringify(storeData, null, 2));
+            
+            // 데이터가 없으면 빈 차트 표시
+            if (!storeData || Object.keys(storeData).length === 0) {
+                console.warn('No store amount data to display');
+                if (charts.storeAmount) {
+                    charts.storeAmount.destroy();
+                    charts.storeAmount = null;
+                }
+                return;
+            }
+            
+            // 모든 날짜 수집
+            const allDatesSet = new Set();
+            Object.entries(storeData).forEach(([store, dateAmounts]) => {
+                Object.keys(dateAmounts).forEach(date => {
+                    allDatesSet.add(date);
+                });
+            });
+            
+            const allDates = Array.from(allDatesSet).sort();
+            console.log('All dates:', allDates);
+            
+            // 날짜 범위 채우기 (시작일부터 오늘까지)
+            let filledDates = [];
+            if (allDates.length > 0) {
+                const firstDateParts = allDates[0].split('-');
+                const startDate = new Date(
+                    parseInt(firstDateParts[0]), 
+                    parseInt(firstDateParts[1]) - 1, 
+                    parseInt(firstDateParts[2])
+                );
+                
+                const today = new Date();
+                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                
+                console.log('Start date:', allDates[0], 'Today:', todayStr);
+                
+                const currentDate = new Date(startDate);
+                while (true) {
+                    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+                    filledDates.push(dateStr);
+                    
+                    if (dateStr === todayStr) break;
+                    currentDate.setDate(currentDate.getDate() + 1);
+                    
+                    // 무한 루프 방지
+                    if (filledDates.length > 365) break;
+                }
+            }
+            
+            console.log('Filled dates:', filledDates);
+            
+            // 스토어별 시리즈 생성
+            const storeColors = {
+                'Apple': '#8b5cf6',
+                'Google': '#14b8a6',
+                '미정': '#9ca3af'
+            };
+            
+            const series = Object.entries(storeData).map(([store, dateAmounts]) => {
+                const data = filledDates.map(date => {
+                    const value = dateAmounts[date] || 0;
+                    return value;
+                });
+                console.log(`Series for ${store}:`, data);
+                return {
+                    name: store,
+                    data: data
+                };
+            });
+            
+            console.log('Final series:', series);
+            
+            const colors = Object.keys(storeData).map(store => storeColors[store] || '#9ca3af');
+
+            const options = {
+                series: series,
+                chart: {
+                    type: 'line',
+                    height: 300,
+                    background: 'transparent',
+                    foreColor: '#9ca3af',
+                    zoom: {
+                        enabled: false
+                    }
+                },
+                stroke: {
+                    curve: 'smooth',
+                    width: 3
+                },
+                xaxis: {
+                    categories: filledDates,
+                    labels: {
+                        rotate: -45,
+                        rotateAlways: true,
+                        style: {
+                            colors: '#9ca3af'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        formatter: function (val) {
+                            return '$' + Math.floor(val);
+                        },
+                        style: {
+                            colors: '#9ca3af'
+                        }
+                    },
+                    min: 0
+                },
+                grid: {
+                    borderColor: '#374151'
+                },
+                colors: colors,
+                legend: {
+                    show: true,
+                    position: 'top',
+                    labels: {
+                        colors: '#9ca3af'
+                    }
+                },
+                dataLabels: {
+                    enabled: false
+                }
+            };
+
+            if (charts.storeAmount) {
+                charts.storeAmount.destroy();
+            }
+            
+            charts.storeAmount = new ApexCharts(document.querySelector("#storeAmountChart"), options);
+            charts.storeAmount.render();
+            console.log('Chart rendered successfully');
         }
 
         function updateStoreChart(data) {
