@@ -41,12 +41,15 @@
                             <p class="text-gray-400">실시간 환불 데이터 분석</p>
                         </div>
                         <div class="text-right">
-                            <div class="flex items-center gap-2 mb-2">
+                            <div class="flex items-center gap-2 mb-2 flex-wrap justify-end">
                                 <input type="date" id="startDate" class="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-gray-500">
                                 <span class="text-gray-400">~</span>
                                 <input type="date" id="endDate" class="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-gray-500">
-                                <button onclick="loadData()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition flex items-center gap-2">
-                                    🔄 새로고침
+                                <button id="applyBtn" onclick="applyFilter()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                                    <span id="applyBtnText">✓ 적용</span>
+                                </button>
+                                <button id="resetBtn" onclick="resetDates()" class="bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition flex items-center gap-2">
+                                    <span id="resetBtnText">🔄 전체</span>
                                 </button>
                             </div>
                             <p id="lastUpdated" class="text-sm text-gray-400"></p>
@@ -139,7 +142,12 @@
             date: null
         };
 
+        let isLoading = false;
+
         async function loadData() {
+            if (isLoading) return;
+            isLoading = true;
+            
             try {
                 const response = await fetch(API_URL);
                 
@@ -177,6 +185,7 @@
                 document.getElementById('content').classList.remove('hidden');
                 document.getElementById('lastUpdated').textContent = 
                     `마지막 업데이트: ${new Date().toLocaleTimeString('ko-KR')}`;
+                isLoading = false;
             } catch (error) {
                 document.getElementById('loading').innerHTML = `
                     <div class="text-center bg-gray-800 p-8 rounded-xl shadow-lg max-w-md mx-auto">
@@ -188,6 +197,7 @@
                         </button>
                     </div>
                 `;
+                isLoading = false;
             }
         }
 
@@ -714,6 +724,41 @@
             }
             charts.date = new ApexCharts(document.querySelector("#dateChart"), options);
             charts.date.render();
+        }
+
+        // 날짜 필터 적용
+        function applyFilter() {
+            const applyBtn = document.getElementById('applyBtn');
+            const applyBtnText = document.getElementById('applyBtnText');
+            
+            applyBtnText.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span> 로딩중...';
+            applyBtn.disabled = true;
+            applyBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            loadData().finally(() => {
+                applyBtnText.textContent = '✓ 적용';
+                applyBtn.disabled = false;
+                applyBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            });
+        }
+
+        // 날짜 필터 초기화
+        function resetDates() {
+            const resetBtn = document.getElementById('resetBtn');
+            const resetBtnText = document.getElementById('resetBtnText');
+            
+            resetBtnText.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span> 로딩중...';
+            resetBtn.disabled = true;
+            resetBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            
+            loadData().finally(() => {
+                resetBtnText.textContent = '🔄 전체';
+                resetBtn.disabled = false;
+                resetBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            });
         }
 
         // 페이지 로드시 데이터 불러오기
