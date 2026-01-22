@@ -37,14 +37,24 @@
                 <div class="mb-8">
                     <div class="flex items-center justify-between flex-wrap gap-4">
                         <div>
-                            <h1 class="text-4xl font-bold text-yellow-400 mb-2">Abyss of Dungeons 환불 현황 대시보드</h1>
+                            <h1 class="text-4xl font-bold text-yellow-400 mb-2" style="text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8), 6px 6px 12px rgba(0, 0, 0, 0.5);">Abyss of Dungeons 환불 현황 대시보드</h1>
                             <p class="text-gray-400">실시간 환불 데이터 분석</p>
                         </div>
                         <div class="text-right">
                             <div class="flex items-center gap-2 mb-2 flex-wrap justify-end">
-                                <input type="date" id="startDate" class="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-gray-500">
+                                <div class="relative">
+                                    <input type="date" id="startDate" class="bg-gray-700 text-white px-3 py-2 pr-8 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-gray-500">
+                                    <button onclick="clearStartDate()" id="clearStartBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white hidden">
+                                        ✕
+                                    </button>
+                                </div>
                                 <span class="text-gray-400">~</span>
-                                <input type="date" id="endDate" class="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-gray-500">
+                                <div class="relative">
+                                    <input type="date" id="endDate" class="bg-gray-700 text-white px-3 py-2 pr-8 rounded-lg text-sm border border-gray-600 focus:outline-none focus:border-gray-500">
+                                    <button onclick="clearEndDate()" id="clearEndBtn" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white hidden">
+                                        ✕
+                                    </button>
+                                </div>
                                 <button id="applyBtn" onclick="applyFilter()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
                                     <span id="applyBtnText">✓ 적용</span>
                                 </button>
@@ -143,6 +153,34 @@
         };
 
         let isLoading = false;
+
+        // 날짜 입력 필드 변경 감지
+        document.addEventListener('DOMContentLoaded', function() {
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+            const clearStartBtn = document.getElementById('clearStartBtn');
+            const clearEndBtn = document.getElementById('clearEndBtn');
+            
+            startDateInput.addEventListener('input', function() {
+                clearStartBtn.classList.toggle('hidden', !this.value);
+            });
+            
+            endDateInput.addEventListener('input', function() {
+                clearEndBtn.classList.toggle('hidden', !this.value);
+            });
+        });
+
+        // 시작일 삭제
+        function clearStartDate() {
+            document.getElementById('startDate').value = '';
+            document.getElementById('clearStartBtn').classList.add('hidden');
+        }
+
+        // 종료일 삭제
+        function clearEndDate() {
+            document.getElementById('endDate').value = '';
+            document.getElementById('clearEndBtn').classList.add('hidden');
+        }
 
         async function loadData() {
             if (isLoading) return;
